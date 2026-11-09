@@ -1,0 +1,33 @@
+name: 회의록 자동 분석 및 Action Item 반영
+on:
+  push:
+    paths:
+      - 'minutes/meetings/**'
+      - 'scripts/extract.py'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: w2w-extraction
+  cancel-in-progress: false
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: W2W HTML 회의록 추출
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-2.5-flash
+        run: python3 scripts/extract.py
+      - name: JSON 변경사항 저장
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add actions/data/items.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update W2W Action Item candidates"
+            git push
+          fi

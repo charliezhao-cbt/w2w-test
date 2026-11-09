@@ -1,0 +1,22 @@
+name: W2W 테스트 및 주간 메일 발송
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '10 9 * * 1'
+      timezone: 'Asia/Seoul'
+permissions:
+  contents: read
+jobs:
+  email:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 최신 현황 메일 발송
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          W2W_ACTIONS_URL: ${{ vars.W2W_ACTIONS_URL }}
+        run: python3 scripts/mail_report.py
