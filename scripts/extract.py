@@ -3,13 +3,13 @@
 With GEMINI_API_KEY set, uses Gemini for extraction; otherwise reads explicit markup.
 Never overwrites progress of existing items. New items remain review_pending.
 """
-import os,json,re,hashlib,pathlib,urllib.request,html
+import os,json,re,hashlib,pathlib,urllib.request,urllib.error,html
 from html.parser import HTMLParser
 R=pathlib.Path(__file__).resolve().parents[1]
 SRC=R/'minutes'/'meetings'
 DEST=R/'actions'/'data'/'items.json'
 KEY=os.getenv('GEMINI_API_KEY','')
-MODEL=os.getenv('GEMINI_MODEL','gemini-2.5-flash')
+MODEL=os.getenv('GEMINI_MODEL','gemini-3.8-flash')
 class Parser(HTMLParser):
  def __init__(self): super().__init__();self.items=[];self.current=None;self.text=[]
  def handle_starttag(self,tag,attrs):
@@ -36,7 +36,15 @@ def gemini_extract(raw,week):
  'evidence는 회의록에 연속된 그대로의 문자열이어야 합니다. 중복 과제 생성 금지. 회의록:\n'+text[:40000])
  payload={'contents':[{'parts':[{'text':prompt}]}],'generationConfig':{'responseMimeType':'application/json','temperature':0.1}}
  req=urllib.request.Request('https://generativelanguage.googleapis.com/v1beta/models/'+MODEL+':generateContent',data=json.dumps(payload).encode(),headers={'x-goog-api-key':KEY,'Content-Type':'application/json'},method='POST')
- with urllib.request.urlopen(req,timeout=100) as res:resp=json.load(res)
+ try:
+  with urllib.request.urlopen(req,timeout=100) as res:resp=json.load(res)
+ except urllib.error.HTTPError as err:
+  body=err.read().decode('utf-8','replace')
+  try:
+   detail=json.loads(body).get('error',{}).get('message','')
+  except (ValueError,AttributeError):
+   detail=body[:700]
+  raise RuntimeError(f'Gemini API HTTP {err.code} for model {MODEL}: {detail[:900]}') from None
  answer=json.loads(resp['candidates'][0]['content']['parts'][0]['text'])
  if isinstance(answer,dict):answer=answer.get('items',[])
  if not isinstance(answer,list):raise ValueError('AI JSON must be an array')

@@ -20,7 +20,7 @@ jobs:
       - name: W2W HTML 회의록 추출
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: gemini-2.5-flash
+          GEMINI_MODEL: gemini-3.8-flash
         run: python3 scripts/extract.py
       - name: JSON 변경사항 저장
         run: |
